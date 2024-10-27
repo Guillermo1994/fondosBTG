@@ -1,37 +1,44 @@
 package com.fondosBTG.services;
 
-import com.twilio.Twilio;
-import com.twilio.rest.api.v2010.account.Message;
-import com.twilio.type.PhoneNumber;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
+import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 @Service
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+
 public class SmsService {
 
-    @Value("${twilio.account-sid}")
-    private String accountSid;
+    private SnsClient snsClient;
 
-    @Value("${twilio.auth-token}")
-    private String authToken;
-
-    @Value("${twilio.from-number}")
-    private String fromNumber;
-
-    public SmsService(@Value("${twilio.account-sid}") String accountSid,
-                      @Value("${twilio.auth-token}") String authToken) {
-        this.accountSid = accountSid;
-        this.authToken = authToken;
-        Twilio.init(accountSid, authToken); // Inicializa Twilio después de inyectar las propiedades
+    @Autowired
+    public SmsService(SnsClient snsClient) {
+        this.snsClient = snsClient;
     }
 
-    public void enviarSms(String to, String message) {
-        Message.creator(new PhoneNumber(to), new PhoneNumber(fromNumber), message).create();
+    public String enviarSms(String numeroTelefono, String mensaje) {
+        // Validar número de teléfono
+        if (numeroTelefono == null || !numeroTelefono.matches("\\+\\d+")) {
+            throw new IllegalArgumentException("Número de teléfono inválido: " + numeroTelefono);
+        }
+
+        // Validar mensaje
+        if (mensaje == null || mensaje.isEmpty()) {
+            throw new IllegalArgumentException("El mensaje no puede estar vacío");
+        }
+
+        if (mensaje.length() > 2000) { // Supongamos que 2000 es la longitud máxima
+            throw new IllegalArgumentException("El mensaje excede la longitud máxima permitida de 2000 caracteres");
+        }
+
+        // Crear y enviar la solicitud de publicación a SNS
+        PublishRequest request = PublishRequest.builder()
+                .message(mensaje)
+                .phoneNumber(numeroTelefono)
+                .build();
+
+        PublishResponse result = snsClient.publish(request);
+        return result.messageId();
     }
 }

@@ -1,5 +1,6 @@
 package com.fondosBTG.controllers;
 
+import com.fondosBTG.dto.AperturaPeticionDTO;
 import com.fondosBTG.exception.OperationNotAllowedException;
 import com.fondosBTG.exception.ResourceNotFoundException;
 import com.fondosBTG.models.Transaccion;
@@ -7,17 +8,19 @@ import com.fondosBTG.services.IServices.ITransaccionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/transacciones")
+@CrossOrigin(origins = "*")
 public class TransaccionController {
 
     @Autowired
@@ -28,9 +31,11 @@ public class TransaccionController {
     public ResponseEntity<String> abrirFondo(
             @PathVariable String clienteId,
             @PathVariable String fondoId,
-            @RequestParam double monto) {
+            @RequestBody AperturaPeticionDTO aperturaRequest) {
         try {
-            String resultado = transaccionService.realizarApertura(clienteId, fondoId, monto);
+            double monto = aperturaRequest.getMonto();
+            String canalNotificacion = aperturaRequest.getCanalNotificacion();
+            String resultado = transaccionService.realizarApertura(clienteId, fondoId, monto, canalNotificacion);
             return new ResponseEntity<>(resultado, HttpStatus.CREATED);
         } catch (ResourceNotFoundException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
@@ -43,12 +48,13 @@ public class TransaccionController {
     }
 
     // Cancelar un fondo
-    @PostMapping("/cancelacion/{clienteId}/{fondoId}")
+    @PostMapping("/cancelacion/{clienteId}/{fondoId}/{transaccionId}")
     public ResponseEntity<String> cancelarFondo(
             @PathVariable String clienteId,
-            @PathVariable String fondoId) {
+            @PathVariable String fondoId,
+            @PathVariable String transaccionId) {
         try {
-            String resultado = transaccionService.realizarCancelacion(clienteId, fondoId);
+            String resultado = transaccionService.realizarCancelacion(clienteId, fondoId, transaccionId);
             return new ResponseEntity<>(resultado, HttpStatus.OK);
         } catch (ResourceNotFoundException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);

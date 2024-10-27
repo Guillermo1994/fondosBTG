@@ -1,15 +1,15 @@
 package com.fondosBTG.controllers;
 
-import com.fondosBTG.controllers.TransaccionController;
+import com.fondosBTG.dto.AperturaPeticionDTO;
 import com.fondosBTG.exception.OperationNotAllowedException;
 import com.fondosBTG.exception.ResourceNotFoundException;
 import com.fondosBTG.models.Transaccion;
 import com.fondosBTG.services.IServices.ITransaccionService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -18,7 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
-
+@ExtendWith(MockitoExtension.class)
 class TransaccionControllerTest {
 
     @Mock
@@ -27,20 +27,21 @@ class TransaccionControllerTest {
     @InjectMocks
     private TransaccionController transaccionController;
 
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
 
     // Pruebas para el método abrirFondo
     @Test
     void abrirFondo_exitoso_devuelveStatusCreated() {
         String clienteId = "123";
         String fondoId = "456";
-        double monto = 1000.0;
-        when(transaccionService.realizarApertura(clienteId, fondoId, monto)).thenReturn("Fondo abierto exitosamente");
 
-        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, monto);
+        AperturaPeticionDTO aperturaRequest = new AperturaPeticionDTO();
+        aperturaRequest.setMonto(1000.0);
+        aperturaRequest.setCanalNotificacion("EMAIL");
+
+        when(transaccionService.realizarApertura(clienteId, fondoId, aperturaRequest.getMonto(), aperturaRequest.getCanalNotificacion()))
+                .thenReturn("Fondo abierto exitosamente");
+
+        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, aperturaRequest);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals("Fondo abierto exitosamente", response.getBody());
@@ -50,11 +51,15 @@ class TransaccionControllerTest {
     void abrirFondo_fondoNoEncontrado_devuelveStatusNotFound() {
         String clienteId = "123";
         String fondoId = "456";
-        double monto = 1000.0;
-        when(transaccionService.realizarApertura(clienteId, fondoId, monto))
+
+        AperturaPeticionDTO aperturaRequest = new AperturaPeticionDTO();
+        aperturaRequest.setMonto(1000.0);
+        aperturaRequest.setCanalNotificacion("EMAIL");
+
+        when(transaccionService.realizarApertura(clienteId, fondoId, aperturaRequest.getMonto(), aperturaRequest.getCanalNotificacion()))
                 .thenThrow(new ResourceNotFoundException("Fondo no encontrado"));
 
-        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, monto);
+        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, aperturaRequest);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Fondo no encontrado", response.getBody());
@@ -64,11 +69,15 @@ class TransaccionControllerTest {
     void abrirFondo_operacionNoPermitida_devuelveStatusBadRequest() {
         String clienteId = "123";
         String fondoId = "456";
-        double monto = 1000.0;
-        when(transaccionService.realizarApertura(clienteId, fondoId, monto))
+
+        AperturaPeticionDTO aperturaRequest = new AperturaPeticionDTO();
+        aperturaRequest.setMonto(1000.0);
+        aperturaRequest.setCanalNotificacion("EMAIL");
+
+        when(transaccionService.realizarApertura(clienteId, fondoId, aperturaRequest.getMonto(), aperturaRequest.getCanalNotificacion()))
                 .thenThrow(new OperationNotAllowedException("Operación no permitida"));
 
-        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, monto);
+        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, aperturaRequest);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Operación no permitida", response.getBody());
@@ -78,10 +87,15 @@ class TransaccionControllerTest {
     void abrirFondo_errorInterno_devuelveStatusInternalServerError() {
         String clienteId = "123";
         String fondoId = "456";
-        double monto = 1000.0;
-        when(transaccionService.realizarApertura(clienteId, fondoId, monto)).thenThrow(new RuntimeException());
 
-        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, monto);
+        AperturaPeticionDTO aperturaRequest = new AperturaPeticionDTO();
+        aperturaRequest.setMonto(1000.0);
+        aperturaRequest.setCanalNotificacion("EMAIL");
+
+        when(transaccionService.realizarApertura(clienteId, fondoId, aperturaRequest.getMonto(), aperturaRequest.getCanalNotificacion()))
+                .thenThrow(new RuntimeException());
+
+        ResponseEntity<String> response = transaccionController.abrirFondo(clienteId, fondoId, aperturaRequest);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("Error al realizar la apertura del fondo.", response.getBody());
@@ -92,9 +106,10 @@ class TransaccionControllerTest {
     void cancelarFondo_exitoso_devuelveStatusOk() {
         String clienteId = "123";
         String fondoId = "456";
-        when(transaccionService.realizarCancelacion(clienteId, fondoId)).thenReturn("Fondo cancelado exitosamente");
+        String transaccionId = "1";
+        when(transaccionService.realizarCancelacion(clienteId, fondoId,transaccionId)).thenReturn("Fondo cancelado exitosamente");
 
-        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId);
+        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId, transaccionId);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("Fondo cancelado exitosamente", response.getBody());
@@ -104,10 +119,11 @@ class TransaccionControllerTest {
     void cancelarFondo_fondoNoEncontrado_devuelveStatusNotFound() {
         String clienteId = "123";
         String fondoId = "456";
-        when(transaccionService.realizarCancelacion(clienteId, fondoId))
+        String transaccionId = "1";
+        when(transaccionService.realizarCancelacion(clienteId, fondoId, transaccionId))
                 .thenThrow(new ResourceNotFoundException("Fondo no encontrado"));
 
-        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId);
+        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId, transaccionId);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Fondo no encontrado", response.getBody());
@@ -117,10 +133,11 @@ class TransaccionControllerTest {
     void cancelarFondo_operacionNoPermitida_devuelveStatusBadRequest() {
         String clienteId = "123";
         String fondoId = "456";
-        when(transaccionService.realizarCancelacion(clienteId, fondoId))
+        String transaccionId = "1";
+        when(transaccionService.realizarCancelacion(clienteId, fondoId, transaccionId))
                 .thenThrow(new OperationNotAllowedException("Operación no permitida"));
 
-        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId);
+        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId, transaccionId);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Operación no permitida", response.getBody());
@@ -130,9 +147,10 @@ class TransaccionControllerTest {
     void cancelarFondo_errorInterno_devuelveStatusInternalServerError() {
         String clienteId = "123";
         String fondoId = "456";
-        when(transaccionService.realizarCancelacion(clienteId, fondoId)).thenThrow(new RuntimeException());
+        String transaccionId = "1";
+        when(transaccionService.realizarCancelacion(clienteId, fondoId, transaccionId)).thenThrow(new RuntimeException());
 
-        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId);
+        ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId, transaccionId);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("Error al realizar la cancelación del fondo.", response.getBody());

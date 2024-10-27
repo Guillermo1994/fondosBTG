@@ -1,59 +1,78 @@
 package com.fondosBTG.services;
 
-import com.twilio.rest.api.v2010.account.Message;
-import com.twilio.rest.api.v2010.account.MessageCreator;
-import com.twilio.type.PhoneNumber;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
+import software.amazon.awssdk.services.sns.model.PublishResponse;
+import software.amazon.awssdk.services.sns.model.SnsException;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
-public class SmsServiceTest {
+class SmsServiceTest {
+
+    @Mock
+    private SnsClient snsClient;
 
     @InjectMocks
     private SmsService smsService;
 
-    @Value("${twilio.account-sid}")
-    private String accountSid = "testAccountSid";
+    @Test
+    void enviarSms_Exito_DeberiaRetornarMessageId() {
+        // Configurar el mock para la respuesta exitosa
+        PublishResponse response = PublishResponse.builder().messageId("12345").build();
+        when(snsClient.publish(any(PublishRequest.class))).thenReturn(response);
 
-    @Value("${twilio.auth-token}")
-    private String authToken = "testAuthToken";
-
-    @Value("${twilio.from-number}")
-    private String fromNumber = "+1234567890";
-
-    @BeforeEach
-    void setUp() {
-        smsService = new SmsService(accountSid, authToken);
-        smsService.setFromNumber(fromNumber);
+        // Ejecutar el método y verificar el resultado
+        String result = smsService.enviarSms("+123456789", "Mensaje de prueba");
+        assertEquals("12345", result);
     }
 
     @Test
-    public void testEnviarSms() {
-        String toNumber = "+0987654321";
-        String messageContent = "Mensaje de prueba";
+    void enviarSms_Fallo_DeberiaLanzarSnsException() {
+        // Configurar el mock para lanzar una excepción
+        when(snsClient.publish(any(PublishRequest.class))).thenThrow(SnsException.class);
 
-        try (MockedStatic<Message> mockedMessage = Mockito.mockStatic(Message.class)) {
+        // Ejecutar el método y verificar que lanza la excepción esperada
+        assertThrows(SnsException.class, () -> smsService.enviarSms("+123456789", "Mensaje de prueba"));
+    }
 
-            // Crear un mock de MessageCreator en lugar de Message.Creator
-            MessageCreator mockMessageCreator = mock(MessageCreator.class);
-            mockedMessage.when(() -> Message.creator(
-                            any(PhoneNumber.class), any(PhoneNumber.class), anyString()))
-                    .thenReturn(mockMessageCreator);
+    @Test
+    void enviarSms_NumeroTelefonoInvalido_DeberiaLanzarIllegalArgumentException() {
+        // Ejecutar el método con un número de teléfono inválido y verificar la excepción
+        String numeroInvalido = "123ABC";
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> smsService.enviarSms(numeroInvalido, "Mensaje de prueba")
+        );
+        assertEquals("Número de teléfono inválido: " + numeroInvalido, thrown.getMessage());
+    }
 
-            smsService.enviarSms(toNumber, messageContent);
+    @Test
+    void enviarSms_MensajeVacio_DeberiaLanzarIllegalArgumentException() {
+        // Ejecutar el método con un mensaje vacío y verificar la excepción
+        String mensajeVacio = "";
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> smsService.enviarSms("+123456789", mensajeVacio)
+        );
+        assertEquals("El mensaje no puede estar vacío", thrown.getMessage());
+    }
 
-            mockedMessage.verify(() -> Message.creator(
-                    new PhoneNumber(toNumber), new PhoneNumber(fromNumber), messageContent));
-            verify(mockMessageCreator, times(1)).create();
-        }
+    @Test
+    void enviarSms_MensajeExcedeMaximoLongitud_DeberiaLanzarIllegalArgumentException() {
+        // Ejecutar el método con un mensaje que excede la longitud máxima y verificar la excepción
+        String mensajeLargo = "a".repeat(2001);  // Suponiendo que el límite es 2000 caracteres
+        IllegalArgumentException thrown = assertThrows(
+                IllegalArgumentException.class,
+                () -> smsService.enviarSms("+123456789", mensajeLargo)
+        );
+        assertEquals("El mensaje excede la longitud máxima permitida de 2000 caracteres", thrown.getMessage());
     }
 }

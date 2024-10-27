@@ -31,7 +31,7 @@ public class TransaccionServiceImpl implements ITransaccionService {
     private SmsService smsService;
 
     @Override
-    public String realizarApertura(String clienteId, String fondoId, double monto) {
+    public String realizarApertura(String clienteId, String fondoId, double monto, String canalNotificacion) {
         // Validar cliente y fondo
         Cliente cliente = clienteService.obtenerClientPorId(clienteId);
         if (cliente == null) {
@@ -71,26 +71,29 @@ public class TransaccionServiceImpl implements ITransaccionService {
         cliente.setSaldoInicial(cliente.getSaldoInicial() - monto);
         clienteService.guardarCliente(cliente);
 
-        // Enviar notificación por correo
+        // Notificación
         String subject = "Suscripción al Fondo " + fondo.getNombre();
-        String text = "Estimado " + cliente.getNombre() + ",\n\n" +
+        String mensaje = "Estimado " + cliente.getNombre() + ",\n\n" +
                 "Ha sido suscrito exitosamente al fondo " + fondo.getNombre() + ".\n" +
                 "Monto vinculado: " + monto + ".\n\n" +
                 "Saludos,\nSu equipo de Fondos BTG.";
-        emailService.enviarEmail(cliente.getEmail(), subject, text);
 
-        // Enviar mensaje SMS
-//        String smsMessage = "Estimado " + cliente.getNombre() + ", ha sido suscrito al fondo " + fondo.getNombre()
-//                + " con un monto de " + monto + ".";
-//        smsService.enviarSms("+57"+cliente.getTelefono(), smsMessage);
-        // Asegúrate de que Cliente tenga el método getTelefono()
-
+        // Enviar notificación según el canal seleccionado
+        if ("EMAIL".equalsIgnoreCase(canalNotificacion)) {
+            emailService.enviarEmail(cliente.getEmail(), subject, mensaje);
+        } else if ("SMS".equalsIgnoreCase(canalNotificacion)) {
+            String smsMessage = "Estimado " + cliente.getNombre() + ", ha sido suscrito al fondo " + fondo.getNombre()
+                    + " con un monto de " + monto + ".";
+            smsService.enviarSms("+57" + cliente.getTelefono(), smsMessage);
+        } else {
+            throw new IllegalArgumentException("Canal de notificación no válido: " + canalNotificacion);
+        }
 
         return "Transacción de apertura exitosa";
     }
 
     @Override
-    public String realizarCancelacion(String clienteId, String fondoId) {
+    public String realizarCancelacion(String clienteId, String fondoId, String transaccionId) {
         // Validar cliente y fondo
         Cliente cliente = clienteService.obtenerClientPorId(clienteId);
         if (cliente == null) {
@@ -102,41 +105,35 @@ public class TransaccionServiceImpl implements ITransaccionService {
             throw new ResourceNotFoundException("Fondo con ID " + fondoId + " no encontrado.");
         }
 
-        // Obtener transacciones del cliente
-        List<Transaccion> transaccionesCliente = transaccionRepository.findByClienteId(clienteId);
-        if (transaccionesCliente == null || transaccionesCliente.isEmpty()) {
-            throw new OperationNotAllowedException("El cliente no tiene transacciones previas, cancelación no realizada.");
+        // Buscar la transacción por ID y validar que no sea de tipo "Apertura"
+        Transaccion transaccion = transaccionRepository.findById(transaccionId).orElseThrow(
+                () -> new ResourceNotFoundException("Transacción con ID " + transaccionId + " no encontrada.")
+        );
+
+        if (transaccion.getTipo().equals("Cancelación")) {
+            throw new OperationNotAllowedException("No se puede cancelar una transacción de tipo Cancelación.");
         }
 
-        // Validar las transacciones
-        boolean tieneApertura = transaccionesCliente.stream()
-                .anyMatch(t -> t.getTipo().equals("Apertura") && t.getFondoId().equals(fondoId));
-        boolean tieneCancelacion = transaccionesCliente.stream()
-                .anyMatch(t -> t.getTipo().equals("Cancelación") && t.getFondoId().equals(fondoId));
-
-        if (!tieneApertura) {
-            throw new OperationNotAllowedException("No se encontró una transacción de apertura para este fondo.");
+        // Validar que la transacción pertenece al cliente y al fondo correctos
+        if (!transaccion.getClienteId().equals(clienteId) || !transaccion.getFondoId().equals(fondoId)) {
+            throw new OperationNotAllowedException("La transacción no corresponde al cliente o fondo indicado.");
         }
 
-        if (tieneCancelacion) {
-            throw new OperationNotAllowedException("Ya existe una cancelación previa para este fondo.");
-        }
-
-        // Crear y guardar la transacción de cancelación
-        Transaccion transaccion = Transaccion.builder()
-                .id(UUID.randomUUID().toString())
+        // Crear y guardar la nueva transacción de cancelación
+        Transaccion cancelacion = Transaccion.builder()
+                .id(transaccion.getId())
                 .tipo("Cancelación")
                 .fondoId(fondoId)
                 .fondoNombre(fondo.getNombre())
-                .monto(fondo.getMontoMinimo())
+                .monto(transaccion.getMonto())
                 .fecha(LocalDateTime.now())
-                .clienteId(clienteId)
+                .clienteId(transaccion.getClienteId())
                 .build();
 
-        transaccionRepository.save(transaccion);
+        transaccionRepository.save(cancelacion);
 
         // Reembolsar el saldo al cliente
-        cliente.setSaldoInicial(cliente.getSaldoInicial() + fondo.getMontoMinimo());
+        cliente.setSaldoInicial(cliente.getSaldoInicial() + transaccion.getMonto());
         clienteService.guardarCliente(cliente);
 
         return "Transacción de cancelación exitosa";
