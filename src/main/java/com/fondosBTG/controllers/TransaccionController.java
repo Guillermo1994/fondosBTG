@@ -25,7 +25,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/transacciones")
-@CrossOrigin(origins = "*")
 public class TransaccionController {
 
     @Autowired

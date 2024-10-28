@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/clientes")
-@CrossOrigin(origins = "*")
 public class ClienteController {
 
     @Autowired

@@ -21,7 +21,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/fondos")
-@CrossOrigin(origins = "*")
 public class FondoController {
 
     @Autowired

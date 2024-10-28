@@ -67,6 +67,14 @@ uso de Amazon SNS**
 - POST /transacciones/cancelacion/{clienteId}/{fondoId}/{transaccionId}: Cancelar una transacción existente.
 - GET /transacciones/historial/{clienteId}: Ver el historial de transacciones de un cliente.
 
+## Calidad de Código
+La calidad del código es fundamental en este proyecto. Se implementaron las siguientes herramientas:
+
+- **CheckStyle**: Se utiliza para garantizar que el código siga las convenciones de estilo definidas.
+- **SpotBugs**: Identifica errores comunes en el código que podrían llevar a problemas en tiempo de ejecución.
+- **PMD**: Ayuda a encontrar problemas de mantenimiento y calidad, como código duplicado o métodos excesivamente largos.
+- **JaCoCo**: Se utiliza para medir la cobertura de pruebas, asegurando que el código crítico esté bien probado.
+
 ## Pruebas
 La aplicación incluye pruebas unitarias para los servicios principales. Puedes ejecutar las pruebas usando:
 ```bash
