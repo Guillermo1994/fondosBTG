@@ -4,7 +4,7 @@ Resources:
   AppBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "${AWS::AccountId}-app-bucket"
+      BucketName: !Sub "fondoBTG-bucket"
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
@@ -112,7 +112,7 @@ Resources:
 
 Outputs:
   EC2PublicIP:
-    Description: IP pública de la instancia EC2 para acceso a la aplicación Spring Boot
+    Description: IP pública de la instancia EC2 para acceso a la aplicación Spring Boot FondoBTG
     Value: !GetAtt EC2Instance.PublicIp
 
   S3BucketURL:
