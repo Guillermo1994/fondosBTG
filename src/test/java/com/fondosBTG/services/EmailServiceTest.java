@@ -33,13 +33,10 @@ class EmailServiceTest {
 
     @Test
     void testEnviarEmail() {
-        // Arrange
         doNothing().when(mailSender).send(any(SimpleMailMessage.class));
 
-        // Act
         emailService.enviarEmail("test@example.com", "Test Subject", "Test Body");
 
-        // Assert
         verify(mailSender, times(1)).send(Mockito.argThat((SimpleMailMessage msg) ->
                 msg.getTo()[0].equals("test@example.com") &&
                         msg.getSubject().equals("Test Subject") &&

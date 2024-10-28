@@ -14,8 +14,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FondoServiceImplTest {
@@ -37,14 +41,11 @@ class FondoServiceImplTest {
 
     @Test
     void testObtenerFondos() {
-        // Arrange
         List<Fondo> fondos = Arrays.asList(fondo);
         when(fondoRepository.findAll()).thenReturn(fondos);
 
-        // Act
         List<Fondo> result = fondoService.obtenerFondos();
 
-        // Assert
         assertEquals(1, result.size());
         assertEquals("Fondo Test", result.get(0).getNombre());
         verify(fondoRepository, times(1)).findAll();
@@ -52,13 +53,10 @@ class FondoServiceImplTest {
 
     @Test
     void testObtenerFondoPorId_ExistentId() {
-        // Arrange
         when(fondoRepository.findById("1")).thenReturn(Optional.of(fondo));
 
-        // Act
         Fondo result = fondoService.obtenerFondoPorId("1");
 
-        // Assert
         assertNotNull(result);
         assertEquals("Fondo Test", result.getNombre());
         verify(fondoRepository, times(1)).findById("1");
@@ -66,23 +64,18 @@ class FondoServiceImplTest {
 
     @Test
     void testObtenerFondoPorId_NonExistentId() {
-        // Arrange
         when(fondoRepository.findById("2")).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertThrows(ResourceNotFoundException.class, () -> fondoService.obtenerFondoPorId("2"));
         verify(fondoRepository, times(1)).findById("2");
     }
 
     @Test
     void testGuardarFondo() {
-        // Arrange
         when(fondoRepository.save(fondo)).thenReturn(fondo);
 
-        // Act
         Fondo result = fondoService.guardarFondo(fondo);
 
-        // Assert
         assertNotNull(result);
         assertEquals("Fondo Test", result.getNombre());
         verify(fondoRepository, times(1)).save(fondo);

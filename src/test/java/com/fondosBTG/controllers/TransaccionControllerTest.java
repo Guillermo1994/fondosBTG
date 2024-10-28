@@ -17,7 +17,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+
 @ExtendWith(MockitoExtension.class)
 class TransaccionControllerTest {
 
@@ -28,7 +29,6 @@ class TransaccionControllerTest {
     private TransaccionController transaccionController;
 
 
-    // Pruebas para el método abrirFondo
     @Test
     void abrirFondo_exitoso_devuelveStatusCreated() {
         String clienteId = "123";
@@ -101,13 +101,12 @@ class TransaccionControllerTest {
         assertEquals("Error al realizar la apertura del fondo.", response.getBody());
     }
 
-    // Pruebas para el método cancelarFondo
     @Test
     void cancelarFondo_exitoso_devuelveStatusOk() {
         String clienteId = "123";
         String fondoId = "456";
         String transaccionId = "1";
-        when(transaccionService.realizarCancelacion(clienteId, fondoId,transaccionId)).thenReturn("Fondo cancelado exitosamente");
+        when(transaccionService.realizarCancelacion(clienteId, fondoId, transaccionId)).thenReturn("Fondo cancelado exitosamente");
 
         ResponseEntity<String> response = transaccionController.cancelarFondo(clienteId, fondoId, transaccionId);
 
