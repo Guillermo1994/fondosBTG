@@ -27,8 +27,8 @@ public class Cliente {
     /** Nombre del cliente */
     private String nombre;
 
-    /** Saldo inicial del cliente, por defecto 500.000  */
-    private Double saldoInicial = 500000.0;
+    /** Saldo inicial del cliente */
+    private Double saldoInicial;
 
     /** Dirección de correo electrónico del cliente */
     private String email;

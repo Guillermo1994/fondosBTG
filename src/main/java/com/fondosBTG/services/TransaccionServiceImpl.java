@@ -89,10 +89,9 @@ public class TransaccionServiceImpl implements ITransaccionService {
         clienteService.guardarCliente(cliente);
 
         String subject = "Suscripción al Fondo " + fondo.getNombre();
-        String mensaje = "Estimado " + cliente.getNombre() + ",\n\n" +
-                "Ha sido suscrito exitosamente al fondo " + fondo.getNombre() + ".\n" +
-                "Monto vinculado: " + monto + ".\n\n" +
-                "Saludos,\nSu equipo de Fondos BTG.";
+        String mensaje = "Estimado " + cliente.getNombre() + ",\n\n"
+                + "Ha sido suscrito exitosamente al fondo " + fondo.getNombre() + ".\n"
+                + "Monto vinculado: " + monto + ".\n\n" + "Saludos,\nSu equipo de Fondos BTG.";
 
         if ("EMAIL".equalsIgnoreCase(canalNotificacion)) {
             emailService.enviarEmail(cliente.getEmail(), subject, mensaje);

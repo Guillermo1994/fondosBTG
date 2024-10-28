@@ -69,26 +69,26 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0 # Allow SSH access
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIp: 0.0.0.0/0 # HTTP access for the application
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 27017
           ToPort: 27017
-          CidrIp: 0.0.0.0/0 # MongoDB access
+          CidrIp: 0.0.0.0/0
 
   # EC2 Instance with Docker for Spring Boot and MongoDB using Docker Compose
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
-      InstanceType: t2.micro # Free-tier eligible
+      InstanceType: t2.micro
       SecurityGroupIds:
         - !Ref EC2SecurityGroup
       IamInstanceProfile: !Ref EC2InstanceProfile
-      ImageId: ami-06b21ccaeff8cd686 # Amazon Linux 2 AMI (adjust based on region)
-      KeyName: ClaveAppBTG # Replace with your key pair name
+      ImageId: ami-06b21ccaeff8cd686
+      KeyName: ClaveAppBTG
       UserData:
         Fn::Base64: |
           #!/bin/bash

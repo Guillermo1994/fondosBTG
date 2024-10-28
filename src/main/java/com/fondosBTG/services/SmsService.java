@@ -16,6 +16,8 @@ public class SmsService {
 
     private SnsClient snsClient;
 
+    public static final Integer MAXCARACTERES = 2000;
+
     /**
      * Constructor para inicializar el cliente de AWS SNS.
      *
@@ -46,7 +48,7 @@ public class SmsService {
             throw new IllegalArgumentException("El mensaje no puede estar vacío");
         }
 
-        if (mensaje.length() > 2000) { // Supongamos que 2000 es la longitud máxima
+        if (mensaje.length() > MAXCARACTERES) { // Supongamos que 2000 es la longitud máxima
             throw new IllegalArgumentException("El mensaje excede la longitud máxima permitida de 2000 caracteres");
         }
 

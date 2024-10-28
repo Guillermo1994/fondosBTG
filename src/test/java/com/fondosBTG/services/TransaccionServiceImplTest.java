@@ -10,21 +10,21 @@ import com.fondosBTG.services.IServices.IClienteService;
 import com.fondosBTG.services.IServices.IFondoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.MockitoAnnotations;
 
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
 class TransaccionServiceImplTest {
 
     @Mock
@@ -47,133 +47,194 @@ class TransaccionServiceImplTest {
 
     private Cliente cliente;
     private Fondo fondo;
-    private Transaccion transaccion;
 
     @BeforeEach
     void setUp() {
-        cliente = new Cliente();
-        cliente.setId("cliente123");
-        cliente.setNombre("John Doe");
-        cliente.setEmail("john@example.com");
-        cliente.setTelefono("123456789");
-        cliente.setSaldoInicial(1000.0);
-
-        fondo = new Fondo();
-        fondo.setId("fondo123");
-        fondo.setNombre("Fondo ABC");
-        fondo.setMontoMinimo(500.0);
-
-        transaccion = Transaccion.builder()
-                .id(UUID.randomUUID().toString())
-                .tipo("Apertura")
-                .clienteId(cliente.getId())
-                .fondoId(fondo.getId())
-                .fondoNombre(fondo.getNombre())
-                .monto(600.0)
-                .fecha(LocalDateTime.now())
-                .build();
-
-        // Usar lenient en stubs opcionales para evitar errores de Mockito innecesarios
-        lenient().when(clienteService.obtenerClientPorId(anyString())).thenReturn(cliente);
-        lenient().when(fondoService.obtenerFondoPorId(anyString())).thenReturn(fondo);
+        MockitoAnnotations.openMocks(this);
+        cliente = new Cliente("cliente123", "Cliente Prueba", 1000.0,
+                "cliente@mail.com", "123456789");
+        fondo = new Fondo("fondo123", "Fondo Prueba", 500.00, "FVC");
     }
 
     @Test
-    void realizarApertura_clienteNoExiste_lanzaResourceNotFoundException() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(null);
+    void realizarApertura_exitoEmail() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(fondo);
+
+        String resultado = transaccionService.realizarApertura("cliente123", "fondo123",
+                500.0, "EMAIL");
+
+        assertEquals("Transacción de apertura exitosa", resultado);
+        verify(transaccionRepository, times(1)).save(any(Transaccion.class));
+        verify(emailService, times(1)).enviarEmail(eq("cliente@mail.com"),
+                anyString(), anyString());
+    }
+
+    @Test
+    void realizarApertura_exitoSMS() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(fondo);
+
+        String resultado = transaccionService.realizarApertura("cliente123", "fondo123",
+                500.0, "SMS");
+
+        assertEquals("Transacción de apertura exitosa", resultado);
+        verify(transaccionRepository, times(1)).save(any(Transaccion.class));
+        verify(smsService, times(1)).enviarSms(eq("+57123456789"), anyString());
+    }
+
+    @Test
+    void realizarApertura_clienteNoEncontrado() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(null);
 
         assertThrows(ResourceNotFoundException.class, () ->
-                transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 600.0, "EMAIL"));
+                transaccionService.realizarApertura("cliente123", "fondo123", 500.0,
+                        "EMAIL"));
     }
 
     @Test
-    void realizarApertura_fondoNoExiste_lanzaResourceNotFoundException() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(null);
+    void realizarApertura_fondoNoEncontrado() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(null);
 
         assertThrows(ResourceNotFoundException.class, () ->
-                transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 600.0, "EMAIL"));
+                transaccionService.realizarApertura("cliente123", "fondo123", 500.0,
+                        "EMAIL"));
     }
 
     @Test
-    void realizarApertura_saldoInsuficiente_lanzaOperationNotAllowedException() {
-        cliente.setSaldoInicial(100.0);
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
+    void realizarApertura_saldoInsuficiente() {
+        cliente.setSaldoInicial(100.0); // Saldo insuficiente
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(fondo);
 
         assertThrows(OperationNotAllowedException.class, () ->
-                transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 600.0, "EMAIL"));
+                transaccionService.realizarApertura("cliente123", "fondo123", 500.0,
+                        "EMAIL"));
     }
 
     @Test
-    void realizarApertura_montoMenorAlMinimo_lanzaOperationNotAllowedException() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
+    void realizarApertura_montoMenorAlMinimo() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(fondo);
 
         assertThrows(OperationNotAllowedException.class, () ->
-                transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 400.0, "EMAIL"));
+                transaccionService.realizarApertura("cliente123", "fondo123", 200.0,
+                        "EMAIL"));
     }
 
     @Test
-    void realizarApertura_canalNotificacionInvalido_lanzaIllegalArgumentException() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
+    void realizarApertura_canalNotificacionInvalido() {
+        when(clienteService.obtenerClientPorId("cliente123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo123")).thenReturn(fondo);
 
         assertThrows(IllegalArgumentException.class, () ->
-                transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 600.0, "INVALID"));
+                transaccionService.realizarApertura("cliente123", "fondo123", 500.0,
+                        "INVALIDO"));
     }
 
     @Test
-    void realizarApertura_enviaNotificacionEmail() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
+    void realizarCancelacion_clienteNoEncontrado() {
+        when(clienteService.obtenerClientPorId("123")).thenReturn(null);
 
-        String resultado = transaccionService.realizarApertura(cliente.getId(), fondo.getId(), 600.0, "EMAIL");
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
+            transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+        });
 
-        verify(emailService, times(1)).enviarEmail(eq(cliente.getEmail()), anyString(), anyString());
-        assertEquals("Transacción de apertura exitosa", resultado);
+        assertEquals("Cliente con ID 123 no encontrado.", exception.getMessage());
     }
 
     @Test
-    void realizarCancelacion_transaccionNoEncontrada_lanzaResourceNotFoundException() {
-        when(transaccionRepository.findById(anyString())).thenReturn(Optional.empty());
+    void realizarCancelacion_fondoNoEncontrado() {
+        Cliente cliente = new Cliente();
+        when(clienteService.obtenerClientPorId("123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo1")).thenReturn(null);
 
-        assertThrows(ResourceNotFoundException.class, () ->
-                transaccionService.realizarCancelacion(cliente.getId(), fondo.getId(), "transaccionInvalida"));
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
+            transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+        });
+
+        assertEquals("Fondo con ID fondo1 no encontrado.", exception.getMessage());
     }
 
     @Test
-    void realizarCancelacion_transaccionEsCancelacion_lanzaOperationNotAllowedException() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
+    void realizarCancelacion_transaccionNoEncontrada() {
+        Cliente cliente = new Cliente();
+        Fondo fondo = new Fondo();
+        when(clienteService.obtenerClientPorId("123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo1")).thenReturn(fondo);
+        when(transaccionRepository.findById("transaccion1")).thenReturn(Optional.empty());
 
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class, () -> {
+            transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+        });
+
+        assertEquals("Transacción con ID transaccion1 no encontrada.", exception.getMessage());
+    }
+
+    @Test
+    void realizarCancelacion_transaccionYaCancelada() {
+        Cliente cliente = new Cliente();
+        Fondo fondo = new Fondo();
+        Transaccion transaccion = new Transaccion();
         transaccion.setTipo("Cancelación");
-        when(transaccionRepository.findById(transaccion.getId())).thenReturn(Optional.of(transaccion));
+        when(clienteService.obtenerClientPorId("123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo1")).thenReturn(fondo);
+        when(transaccionRepository.findById("transaccion1")).thenReturn(Optional.of(transaccion));
 
-        assertThrows(OperationNotAllowedException.class, () ->
-                transaccionService.realizarCancelacion(cliente.getId(), fondo.getId(), transaccion.getId()));
-    }
+        OperationNotAllowedException exception = assertThrows(OperationNotAllowedException.class, () -> {
+            transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+        });
 
-
-
-    void realizarCancelacion_exitosa() {
-        when(clienteService.obtenerClientPorId(cliente.getId())).thenReturn(cliente);
-        when(fondoService.obtenerFondoPorId(fondo.getId())).thenReturn(fondo);
-        when(transaccionRepository.findById(transaccion.getId())).thenReturn(Optional.of(transaccion));
-
-        String resultado = transaccionService.realizarCancelacion(cliente.getId(), fondo.getId(), transaccion.getId());
-
-        assertEquals("Transacción de cancelación exitosa", resultado);
-        verify(transaccionRepository, times(1)).save(any(Transaccion.class));
+        assertEquals("No se puede cancelar una transacción de tipo Cancelación.", exception.getMessage());
     }
 
     @Test
-    void verHistorial_retornaListaTransacciones() {
-        when(transaccionRepository.findByClienteId(cliente.getId())).thenReturn(List.of(transaccion));
+    void realizarCancelacion_transaccionNoCorresponde() {
+        Cliente cliente = new Cliente();
+        Fondo fondo = new Fondo();
+        Transaccion transaccion = new Transaccion();
+        transaccion.setTipo("Apertura");
+        transaccion.setClienteId("otroCliente");
+        when(clienteService.obtenerClientPorId("123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo1")).thenReturn(fondo);
+        when(transaccionRepository.findById("transaccion1")).thenReturn(Optional.of(transaccion));
 
-        List<Transaccion> historial = transaccionService.verHistorial(cliente.getId());
+        OperationNotAllowedException exception = assertThrows(OperationNotAllowedException.class, () -> {
+            transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+        });
 
-        assertEquals(1, historial.size());
-        assertEquals(transaccion.getId(), historial.get(0).getId());
+        assertEquals("La transacción no corresponde al cliente o fondo indicado.", exception.getMessage());
+    }
+
+    @Test
+    void realizarCancelacion_exito() {
+        // Preparación de datos simulados
+        Cliente cliente = new Cliente();
+        cliente.setId("123");
+        cliente.setSaldoInicial(1000.0);
+
+        Fondo fondo = new Fondo();
+        fondo.setId("fondo1");
+
+        Transaccion transaccion = new Transaccion();
+        transaccion.setTipo("Apertura");
+        transaccion.setMonto(200);
+        transaccion.setClienteId("123");
+        transaccion.setFondoId("fondo1"); // Establece fondoId para evitar el NullPointerException
+
+        // Mock de comportamiento
+        when(clienteService.obtenerClientPorId("123")).thenReturn(cliente);
+        when(fondoService.obtenerFondoPorId("fondo1")).thenReturn(fondo);
+        when(transaccionRepository.findById("transaccion1")).thenReturn(Optional.of(transaccion));
+
+        // Ejecución del método de prueba
+        String resultado = transaccionService.realizarCancelacion("123", "fondo1", "transaccion1");
+
+        // Verificación de resultados
+        assertEquals("Transacción de cancelación exitosa", resultado);
+        assertEquals(1200, cliente.getSaldoInicial());
+        verify(transaccionRepository).save(any(Transaccion.class));
+        verify(clienteService).guardarCliente(cliente);
     }
 }
