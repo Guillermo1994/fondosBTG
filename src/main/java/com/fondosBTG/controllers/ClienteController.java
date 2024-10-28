@@ -14,13 +14,26 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Controlador para gestionar las operaciones relacionadas con los clientes.
+ *
+ * @author Guillermo Ramirez
+ */
 @RestController
 @RequestMapping("/clientes")
 @CrossOrigin(origins = "*")
 public class ClienteController {
+
     @Autowired
     private IClienteService clienteService;
 
+    /**
+     * Obtiene un cliente por su identificador único.
+     *
+     * @param id El identificador del cliente.
+     * @return Una respuesta que contiene el cliente encontrado y el estado HTTP. Si el cliente no se encuentra, se
+     * devuelve un estado HTTP 404.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<Cliente> obtenerCliente(@PathVariable String id) {
         try {
@@ -31,6 +44,12 @@ public class ClienteController {
         }
     }
 
+    /**
+     * Guarda un nuevo cliente en el sistema.
+     *
+     * @param cliente El cliente a guardar.
+     * @return Una respuesta que contiene el nuevo cliente creado y el estado HTTP 201.
+     */
     @PostMapping
     public ResponseEntity<Cliente> guardaCliente(@RequestBody Cliente cliente) {
         Cliente nuevoCliente = clienteService.guardarCliente(cliente);

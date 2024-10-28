@@ -14,14 +14,25 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Controlador para gestionar las operaciones relacionadas con los fondos.
+ *
+ * @author Guillermo Ramirez
+ */
 @RestController
 @RequestMapping("/fondos")
 @CrossOrigin(origins = "*")
 public class FondoController {
+
     @Autowired
     private IFondoService fondoService;
 
-    // Obtener todos los fondos
+    /**
+     * Obtiene todos los fondos disponibles en el sistema.
+     *
+     * @return Una respuesta que contiene la lista de fondos y el estado HTTP. Si ocurre un error, se devuelve un estado
+     * HTTP 500.
+     */
     @GetMapping
     public ResponseEntity<List<Fondo>> obtenerFondos() {
         List<Fondo> fondos = null;
@@ -33,6 +44,13 @@ public class FondoController {
         }
     }
 
+    /**
+     * Guarda un nuevo fondo en el sistema.
+     *
+     * @param fondo El fondo a guardar.
+     * @return Una respuesta que contiene el nuevo fondo creado y el estado HTTP 201. Si hay un error en la solicitud,
+     * se devuelve un estado HTTP 400.
+     */
     @PostMapping
     public ResponseEntity<Fondo> guardaFondo(@RequestBody Fondo fondo) {
         try {
@@ -42,5 +60,4 @@ public class FondoController {
             return new ResponseEntity<>(new Fondo(), HttpStatus.BAD_REQUEST);
         }
     }
-
 }

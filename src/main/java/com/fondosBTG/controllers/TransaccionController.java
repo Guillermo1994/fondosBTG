@@ -18,6 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * Controlador para gestionar las operaciones relacionadas con las transacciones de fondos.
+ *
+ * @author Guillermo Ramirez
+ */
 @RestController
 @RequestMapping("/transacciones")
 @CrossOrigin(origins = "*")
@@ -26,7 +31,15 @@ public class TransaccionController {
     @Autowired
     private ITransaccionService transaccionService;
 
-    // Abrir un fondo
+    /**
+     * Abre un fondo para un cliente específico.
+     *
+     * @param clienteId       ID del cliente.
+     * @param fondoId         ID del fondo.
+     * @param aperturaRequest Objeto que contiene la solicitud de apertura.
+     * @return Una respuesta que contiene el resultado de la operación y el estado HTTP. Puede devolver un estado HTTP
+     * 201 (CREATED), 404 (NOT FOUND) o 400 (BAD REQUEST) en caso de error.
+     */
     @PostMapping("/apertura/{clienteId}/{fondoId}")
     public ResponseEntity<String> abrirFondo(
             @PathVariable String clienteId,
@@ -47,7 +60,15 @@ public class TransaccionController {
         }
     }
 
-    // Cancelar un fondo
+    /**
+     * Cancela un fondo para un cliente específico.
+     *
+     * @param clienteId     ID del cliente.
+     * @param fondoId       ID del fondo.
+     * @param transaccionId ID de la transacción a cancelar.
+     * @return Una respuesta que contiene el resultado de la operación y el estado HTTP. Puede devolver un estado HTTP
+     * 200 (OK), 404 (NOT FOUND) o 400 (BAD REQUEST) en caso de error.
+     */
     @PostMapping("/cancelacion/{clienteId}/{fondoId}/{transaccionId}")
     public ResponseEntity<String> cancelarFondo(
             @PathVariable String clienteId,
@@ -66,7 +87,13 @@ public class TransaccionController {
         }
     }
 
-    // Ver historial de transacciones
+    /**
+     * Obtiene el historial de transacciones de un cliente específico.
+     *
+     * @param clienteId ID del cliente.
+     * @return Una respuesta que contiene la lista de transacciones y el estado HTTP. Puede devolver un estado HTTP 200
+     * (OK), 404 (NOT FOUND) o 500 (INTERNAL SERVER ERROR) en caso de error.
+     */
     @GetMapping("/historial/{clienteId}")
     public ResponseEntity<List<Transaccion>> verHistorial(@PathVariable String clienteId) {
         List<Transaccion> historial = null;

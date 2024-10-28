@@ -16,6 +16,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Servicio para gestionar transacciones de fondos, como apertura y cancelación de suscripciones.
+ *
+ * @author Guillermo Ramirez
+ */
 @Service
 public class TransaccionServiceImpl implements ITransaccionService {
 
@@ -30,9 +35,24 @@ public class TransaccionServiceImpl implements ITransaccionService {
     @Autowired
     private SmsService smsService;
 
+    /**
+     * Realiza una apertura de suscripción al fondo indicado para el cliente especificado, con un monto específico.
+     * <p>
+     * Verifica que el cliente tenga saldo suficiente y que el monto sea igual o superior al monto mínimo del fondo.
+     * Notifica al cliente vía email o SMS según el canal de notificación elegido.
+     *
+     * @param clienteId         ID del cliente que realiza la suscripción.
+     * @param fondoId           ID del fondo al cual se suscribe el cliente.
+     * @param monto             Monto a vincular en la suscripción.
+     * @param canalNotificacion Canal de notificación a utilizar (EMAIL o SMS).
+     * @return Un mensaje de éxito tras realizar la apertura.
+     * @throws ResourceNotFoundException    Si el cliente o el fondo no se encuentran.
+     * @throws OperationNotAllowedException Si el cliente no tiene saldo suficiente o el monto no cumple con el mínimo
+     *                                      requerido.
+     * @throws IllegalArgumentException     Si el canal de notificación no es válido.
+     */
     @Override
     public String realizarApertura(String clienteId, String fondoId, double monto, String canalNotificacion) {
-        // Validar cliente y fondo
         Cliente cliente = clienteService.obtenerClientPorId(clienteId);
         if (cliente == null) {
             throw new ResourceNotFoundException("Cliente con ID " + clienteId + " no encontrado.");
@@ -43,18 +63,16 @@ public class TransaccionServiceImpl implements ITransaccionService {
             throw new ResourceNotFoundException("Fondo con ID " + fondoId + " no encontrado.");
         }
 
-        // Verificar si el cliente tiene saldo suficiente
         if (cliente.getSaldoInicial() < monto) {
-            throw new OperationNotAllowedException("Saldo insuficiente para vincularse al fondo " + fondo.getNombre());
+            throw new OperationNotAllowedException("Saldo insuficiente para vincularse al fondo "
+                    + fondo.getNombre());
         }
 
-        // Verificar si el monto es el valor minimo del fondo
         if (fondo.getMontoMinimo() > monto) {
             throw new OperationNotAllowedException("El monto minimo es insuficiente para vincularse al fondo "
                     + fondo.getNombre());
         }
 
-        // Crear y guardar la transacción de apertura
         Transaccion transaccion = Transaccion.builder()
                 .id(UUID.randomUUID().toString())
                 .tipo("Apertura")
@@ -67,18 +85,15 @@ public class TransaccionServiceImpl implements ITransaccionService {
 
         transaccionRepository.save(transaccion);
 
-        // Actualizar saldo del cliente
         cliente.setSaldoInicial(cliente.getSaldoInicial() - monto);
         clienteService.guardarCliente(cliente);
 
-        // Notificación
         String subject = "Suscripción al Fondo " + fondo.getNombre();
         String mensaje = "Estimado " + cliente.getNombre() + ",\n\n" +
                 "Ha sido suscrito exitosamente al fondo " + fondo.getNombre() + ".\n" +
                 "Monto vinculado: " + monto + ".\n\n" +
                 "Saludos,\nSu equipo de Fondos BTG.";
 
-        // Enviar notificación según el canal seleccionado
         if ("EMAIL".equalsIgnoreCase(canalNotificacion)) {
             emailService.enviarEmail(cliente.getEmail(), subject, mensaje);
         } else if ("SMS".equalsIgnoreCase(canalNotificacion)) {
@@ -92,9 +107,23 @@ public class TransaccionServiceImpl implements ITransaccionService {
         return "Transacción de apertura exitosa";
     }
 
+    /**
+     * Realiza una cancelación de suscripción al fondo indicado para el cliente especificado, utilizando el ID de
+     * transacción.
+     * <p>
+     * Valida que la transacción sea de tipo "Apertura" y que pertenezca al cliente y fondo indicados. Reembolsa el
+     * saldo al cliente y guarda la transacción de cancelación.
+     *
+     * @param clienteId     ID del cliente que realiza la cancelación.
+     * @param fondoId       ID del fondo cuya suscripción se desea cancelar.
+     * @param transaccionId ID de la transacción de apertura a cancelar.
+     * @return Un mensaje de éxito tras realizar la cancelación.
+     * @throws ResourceNotFoundException    Si el cliente, fondo o transacción no se encuentran.
+     * @throws OperationNotAllowedException Si la transacción no es de tipo apertura o no pertenece al cliente y fondo
+     *                                      indicados.
+     */
     @Override
     public String realizarCancelacion(String clienteId, String fondoId, String transaccionId) {
-        // Validar cliente y fondo
         Cliente cliente = clienteService.obtenerClientPorId(clienteId);
         if (cliente == null) {
             throw new ResourceNotFoundException("Cliente con ID " + clienteId + " no encontrado.");
@@ -105,7 +134,6 @@ public class TransaccionServiceImpl implements ITransaccionService {
             throw new ResourceNotFoundException("Fondo con ID " + fondoId + " no encontrado.");
         }
 
-        // Buscar la transacción por ID y validar que no sea de tipo "Apertura"
         Transaccion transaccion = transaccionRepository.findById(transaccionId).orElseThrow(
                 () -> new ResourceNotFoundException("Transacción con ID " + transaccionId + " no encontrada.")
         );
@@ -114,12 +142,10 @@ public class TransaccionServiceImpl implements ITransaccionService {
             throw new OperationNotAllowedException("No se puede cancelar una transacción de tipo Cancelación.");
         }
 
-        // Validar que la transacción pertenece al cliente y al fondo correctos
         if (!transaccion.getClienteId().equals(clienteId) || !transaccion.getFondoId().equals(fondoId)) {
             throw new OperationNotAllowedException("La transacción no corresponde al cliente o fondo indicado.");
         }
 
-        // Crear y guardar la nueva transacción de cancelación
         Transaccion cancelacion = Transaccion.builder()
                 .id(transaccion.getId())
                 .tipo("Cancelación")
@@ -132,13 +158,18 @@ public class TransaccionServiceImpl implements ITransaccionService {
 
         transaccionRepository.save(cancelacion);
 
-        // Reembolsar el saldo al cliente
         cliente.setSaldoInicial(cliente.getSaldoInicial() + transaccion.getMonto());
         clienteService.guardarCliente(cliente);
 
         return "Transacción de cancelación exitosa";
     }
 
+    /**
+     * Retorna el historial de transacciones de un cliente.
+     *
+     * @param clienteId ID del cliente cuyo historial de transacciones se desea consultar.
+     * @return Lista de transacciones del cliente.
+     */
     @Override
     public List<Transaccion> verHistorial(String clienteId) {
         return transaccionRepository.findByClienteId(clienteId);
